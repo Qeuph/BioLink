@@ -23,7 +23,7 @@ A completely free, serverless "Link-in-Bio" web application. It allows users to 
 - **Hosting:** Netlify (or any static file host)
 - **QR API:** QRServer API
 
-## 📦 Installation
+## 📦 Installation Personal Use
 
 ### Prerequisites
 1.  A JSONBin.io account (Free tier).

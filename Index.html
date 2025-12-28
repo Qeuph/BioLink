@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroProfile - Free Bio Builder</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; min-height: 100vh; }
+        .container { width: 100%; max-width: 500px; }
+        
+        /* Tabs */
+        .tabs { display: flex; margin-bottom: 20px; background: #e2e8f0; padding: 5px; border-radius: 8px; }
+        .tab { flex: 1; padding: 10px; text-align: center; cursor: pointer; border-radius: 6px; font-weight: 600; transition: 0.3s; }
+        .tab.active { background: var(--card-bg); color: var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+
+        /* Forms & Cards */
+        .card { background: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        input, textarea { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 1rem; margin-top: 10px; transition: 0.2s; }
+        button:hover { opacity: 0.9; }
+        
+        /* Profile Preview */
+        .profile-header { text-align: center; margin-bottom: 20px; }
+        .avatar { width: 80px; height: 80px; border-radius: 50%; background: #ddd; margin: 0 auto 10px; object-fit: cover; }
+        .links-list { display: flex; flex-direction: column; gap: 10px; }
+        .link-item { display: block; padding: 15px; background: #f1f5f9; text-decoration: none; color: var(--text); border-radius: 8px; text-align: center; font-weight: 500; transition: 0.2s; border: 1px solid transparent; }
+        .link-item:hover { border-color: var(--primary); background: #fff; }
+        
+        .hidden { display: none; }
+        .success-msg { color: green; text-align: center; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('create')">Create / Edit</div>
+        <div class="tab" onclick="switchTab('view')">View Profile</div>
+    </div>
+
+    <!-- CREATE/EDIT SECTION -->
+    <div id="create-section">
+        <div class="card">
+            <h3>Build Your Bio</h3>
+            <p style="font-size: 0.9em; color: #64748b;">Enter your unique ID to save or load your profile.</p>
+            
+            <label>Username (ID)</label>
+            <input type="text" id="userId" placeholder="e.g. john_doe_123">
+            
+            <label>Full Name</label>
+            <input type="text" id="userName" placeholder="John Doe">
+            
+            <label>Bio / Tagline</label>
+            <textarea id="userBio" rows="3" placeholder="Developer | Designer | Creator"></textarea>
+            
+            <label>Links (One per line: Title | URL)</label>
+            <textarea id="userLinks" rows="4" placeholder="Instagram | https://instagram.com/me&#10;Portfolio | https://mysite.com"></textarea>
+            
+            <button onclick="saveProfile()">Save Profile to Cloud</button>
+            <div id="save-status" class="success-msg"></div>
+        </div>
+    </div>
+
+    <!-- VIEW SECTION -->
+    <div id="view-section" class="hidden">
+        <div class="card">
+            <div class="profile-header">
+                <img src="https://picsum.photos/seed/profile/200/200" id="viewAvatar" class="avatar" alt="Avatar">
+                <h2 id="viewName">User Name</h2>
+                <p id="viewBio">User Bio goes here...</p>
+            </div>
+            <div id="viewLinks" class="links-list">
+                <!-- Links injected here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- CONFIGURATION ---
+    // REPLACE THESE WITH YOUR ACTUAL JSONBIN.IO CREDENTIALS
+    const API_KEY = '$2a$10$6pUdy/J1bsEd/TyKP1OTF.KLdk5T/Y0N4AxU6xn00i5HQsDK5J0zy'; 
+    const BIN_ID = '695176dfae596e708fb64a3b'; 
+    // ---------------------
+
+    const DB_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+
+    async function getCurrentData() {
+        try {
+            const res = await fetch(DB_URL, {
+                headers: { 'X-Master-Key': API_KEY }
+            });
+            const data = await res.json();
+            return data.record; // Returns the JSON object inside the bin
+        } catch (error) {
+            console.error("Error fetching data", error);
+            return {};
+        }
+    }
+
+    async function updateData(newData) {
+        try {
+            await fetch(DB_URL, {
+                method: 'PUT',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-Master-Key': API_KEY 
+                },
+                body: JSON.stringify(newData)
+            });
+            return true;
+        } catch (error) {
+            console.error("Error saving data", error);
+            return false;
+        }
+    }
+
+    function switchTab(tab) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab')[tab === 'create' ? 0 : 1].classList.add('active');
+        
+        if(tab === 'create') {
+            document.getElementById('create-section').classList.remove('hidden');
+            document.getElementById('view-section').classList.add('hidden');
+        } else {
+            document.getElementById('create-section').classList.add('hidden');
+            document.getElementById('view-section').classList.remove('hidden');
+        }
+    }
+
+    async function saveProfile() {
+        const userId = document.getElementById('userId').value.trim();
+        const name = document.getElementById('userName').value.trim();
+        const bio = document.getElementById('userBio').value.trim();
+        const linksRaw = document.getElementById('userLinks').value.trim();
+
+        if(!userId) { alert("Please enter a Username ID"); return; }
+
+        // Parse Links
+        const links = linksRaw.split('\n').filter(line => line.includes('|')).map(line => {
+            const parts = line.split('|');
+            return { title: parts[0].trim(), url: parts[1].trim() };
+        });
+
+        const userProfile = { name, bio, links, updatedAt: new Date().toISOString() };
+        const status = document.getElementById('save-status');
+        
+        status.innerText = "Saving...";
+        
+        // 1. Get existing DB
+        let db = await getCurrentData();
+        
+        // 2. Update specific user
+        db[userId] = userProfile;
+
+        // 3. Push back to JSONBin
+        const success = await updateData(db);
+        
+        if(success) {
+            status.innerText = "Saved Successfully!";
+            setTimeout(() => status.innerText = "", 2000);
+        } else {
+            status.innerText = "Error saving.";
+        }
+    }
+
+    async function loadProfileView(id) {
+        let db = await getCurrentData();
+        const profile = db[id];
+
+        if(profile) {
+            document.getElementById('viewName').innerText = profile.name;
+            document.getElementById('viewBio').innerText = profile.bio;
+            
+            // Update Avatar seed based on name to make it consistent
+            document.getElementById('viewAvatar').src = `https://picsum.photos/seed/${id}/200/200`;
+
+            const linksContainer = document.getElementById('viewLinks');
+            linksContainer.innerHTML = '';
+            
+            if(profile.links) {
+                profile.links.forEach(link => {
+                    const a = document.createElement('a');
+                    a.href = link.url;
+                    a.className = 'link-item';
+                    a.innerText = link.title;
+                    a.target = "_blank";
+                    linksContainer.appendChild(a);
+                });
+            }
+        } else {
+            document.getElementById('viewName').innerText = "User Not Found";
+            document.getElementById('viewBio').innerText = "";
+            document.getElementById('viewLinks').innerHTML = "";
+        }
+    }
+
+    // Auto-load view if logic was added later, for now manual button switch
+    // But we can make the View tab auto-load the ID typed in Create tab
+    document.querySelector('.tab:nth-child(2)').addEventListener('click', () => {
+        const id = document.getElementById('userId').value.trim();
+        if(id) loadProfileView(id);
+        else alert("Enter an ID in the 'Create' tab first to view it.");
+    });
+
+</script>
+
+</body>
+</html>
